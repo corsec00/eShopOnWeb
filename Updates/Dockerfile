@@ -1,5 +1,4 @@
 # Estágio 1: BUILD
-
 FROM mcr.microsoft.com/dotnet/sdk:8.0-nanoserver-ltsc2022 AS build
 WORKDIR /src
 COPY src/*/*.csproj ./
