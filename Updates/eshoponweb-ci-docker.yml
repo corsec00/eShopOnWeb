@@ -1,21 +1,17 @@
 # NOME DO PIPELINE IGUAL AO NOME DO ARQUIVO (SEM ".yml")
-# altere as linhas 10, 11, 12, 13 e 28
+# altere as linhas 8, 9, 10, 11, 23 e 24
 resources:
   repositories:
     - repository: self
       trigger: none
-
 variables:
-  # --- Variáveis de Configuração ---
   azureServiceConnection: 'azure-connection'
   subscriptionId: '<Sua SubscriptionID aqui>'
   resourceGroup: '<Seu Resource Group aqui>'
-  location: '<Sua Localidade/Região aqui'
-  imageRepository: 'eshoponweb/web'
-  # CORREÇÃO: O caminho do Dockerfile agora é relativo à raiz do repositório
-  dockerfilePath: 'src/Web/Dockerfile' 
+  location: '<Sua Localidade/Região aqui>'
   
-  # --- Variáveis de Ambiente do Agente ---
+  imageRepository: 'eshoponweb/web'
+  dockerfilePath: 'src/Web/Dockerfile' 
   AZP_AGENT_CLEANUP_PSMODULES_IN_POWERSHELL: true
 
 stages:
@@ -24,10 +20,9 @@ stages:
   - job: BuildAndPush
     displayName: 'Build and Push Docker Image'
     pool:
-      name: pf1679-FIAP
+      name: <Seu Agent Pool aqui>
       demands: Agent.Name -equals <Seu Agent Name aqui>
     steps:
-    # --- Etapas 1, 2 e 3 sem alterações ---
     - task: AzureResourceManagerTemplateDeployment@3
       displayName: 'Deploy ACR using Bicep'
       inputs:
@@ -67,21 +62,16 @@ stages:
           $accessToken | docker login $loginServerValue --username 00000000-0000-0000-0000-000000000000 --password-stdin
           Write-Host "Docker login successful."
 
-    # --- Etapa 4: Build da Imagem Docker ---
     - task: Docker@2
       displayName: 'Build Docker image'
       inputs:
         command: build
         repository: '$(BicepOutput.acrLoginServer)/$(imageRepository)'
-        # CORREÇÃO: Especificamos o caminho exato do Dockerfile
         dockerfile: $(dockerfilePath)
-        # CORREÇÃO: Definimos o contexto de build como a raiz do repositório
         buildContext: $(Build.SourcesDirectory)
         tags: |
           $(Build.BuildId)
           latest
-
-    # --- Etapa 5: Push da Imagem Docker ---
     - task: Docker@2
       displayName: 'Push Docker image to ACR'
       inputs:
