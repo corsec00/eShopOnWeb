@@ -1,0 +1,92 @@
+# NOME DO PIPELINE IGUAL AO NOME DO ARQUIVO (SEM ".yml")
+
+resources:
+  repositories:
+    - repository: self
+      trigger: none
+
+variables:
+  # --- Variáveis de Configuração ---
+  azureServiceConnection: 'azure-connection'
+  subscriptionId: 'e788df9b-c8c6-43e5-8a01-037e2c5bba4d'
+  resourceGroup: 'rg-pf1679'
+  location: 'centralus'
+  imageRepository: 'eshoponweb/web'
+  # CORREÇÃO: O caminho do Dockerfile agora é relativo à raiz do repositório
+  dockerfilePath: 'src/Web/Dockerfile' 
+  
+  # --- Variáveis de Ambiente do Agente ---
+  AZP_AGENT_CLEANUP_PSMODULES_IN_POWERSHELL: true
+
+stages:
+- stage: Build
+  jobs:
+  - job: BuildAndPush
+    displayName: 'Build and Push Docker Image'
+    pool:
+      name: pf1679-FIAP
+      demands: Agent.Name -equals AgentPoolLSS01
+    steps:
+    # --- Etapas 1, 2 e 3 sem alterações ---
+    - task: AzureResourceManagerTemplateDeployment@3
+      displayName: 'Deploy ACR using Bicep'
+      inputs:
+        deploymentScope: 'Resource Group'
+        azureResourceManagerConnection: $(azureServiceConnection)
+        subscriptionId: $(subscriptionId)
+        action: 'Create Or Update Resource Group'
+        resourceGroupName: '$(resourceGroup)'
+        location: '$(location)'
+        templateLocation: 'Linked artifact'
+        csmFile: 'infra/acr.bicep'
+        deploymentMode: 'Incremental'
+        deploymentOutputs: 'outputJson'
+
+    - task: PowerShell@2
+      displayName: 'Parse Bicep Output for ACR Login Server'
+      name: BicepOutput
+      inputs:
+        targetType: 'inline'
+        script: |
+          $jsonOutput = '$(outputJson)' | ConvertFrom-Json
+          $loginServer = $jsonOutput.acrLoginServer.value
+          Write-Host "ACR Login Server: $loginServer"
+          Write-Host "##vso[task.setvariable variable=acrLoginServer;isOutput=true;]$loginServer"
+
+    - task: AzureCLI@2
+      displayName: 'Dynamic Login to ACR'
+      inputs:
+        azureSubscription: $(azureServiceConnection)
+        scriptType: 'pscore'
+        scriptLocation: 'inlineScript'
+        inlineScript: |
+          $loginServerValue = "$(BicepOutput.acrLoginServer)"
+          $acrName = $loginServerValue.Split('.')[0]
+          Write-Host "Getting access token for ACR: $acrName"
+          $accessToken = az acr login --name $acrName --expose-token --output tsv --query accessToken
+          $accessToken | docker login $loginServerValue --username 00000000-0000-0000-0000-000000000000 --password-stdin
+          Write-Host "Docker login successful."
+
+    # --- Etapa 4: Build da Imagem Docker ---
+    - task: Docker@2
+      displayName: 'Build Docker image'
+      inputs:
+        command: build
+        repository: '$(BicepOutput.acrLoginServer)/$(imageRepository)'
+        # CORREÇÃO: Especificamos o caminho exato do Dockerfile
+        dockerfile: $(dockerfilePath)
+        # CORREÇÃO: Definimos o contexto de build como a raiz do repositório
+        buildContext: $(Build.SourcesDirectory)
+        tags: |
+          $(Build.BuildId)
+          latest
+
+    # --- Etapa 5: Push da Imagem Docker ---
+    - task: Docker@2
+      displayName: 'Push Docker image to ACR'
+      inputs:
+        command: push
+        repository: '$(BicepOutput.acrLoginServer)/$(imageRepository)'
+        tags: |
+          $(Build.BuildId)
+          latest
