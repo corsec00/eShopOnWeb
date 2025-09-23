@@ -1,5 +1,5 @@
 # NOME DO PIPELINE IGUAL AO NOME DO ARQUIVO (SEM ".yml")
-
+# altere as linhas 10, 11, 12, 13 e 28
 resources:
   repositories:
     - repository: self
@@ -8,9 +8,9 @@ resources:
 variables:
   # --- Variáveis de Configuração ---
   azureServiceConnection: 'azure-connection'
-  subscriptionId: 'e788df9b-c8c6-43e5-8a01-037e2c5bba4d'
-  resourceGroup: 'rg-pf1679'
-  location: 'centralus'
+  subscriptionId: '<Sua SubscriptionID aqui>'
+  resourceGroup: '<Seu Resource Group aqui>'
+  location: '<Sua Localidade/Região aqui'
   imageRepository: 'eshoponweb/web'
   # CORREÇÃO: O caminho do Dockerfile agora é relativo à raiz do repositório
   dockerfilePath: 'src/Web/Dockerfile' 
@@ -25,7 +25,7 @@ stages:
     displayName: 'Build and Push Docker Image'
     pool:
       name: pf1679-FIAP
-      demands: Agent.Name -equals AgentPoolLSS01
+      demands: Agent.Name -equals <Seu Agent Name aqui>
     steps:
     # --- Etapas 1, 2 e 3 sem alterações ---
     - task: AzureResourceManagerTemplateDeployment@3
