@@ -9,7 +9,7 @@ env:
   RESOURCE-GROUP: rg-lab07
   LOCATION: southcentralus
   TEMPLATE-FILE: .azure/bicep/webapp.bicep
-  SUBSCRIPTION-ID: aa24655c-8539-4f1a-8c20-ee9cf6341205
+  SUBSCRIPTION-ID: e788df9b-c8c6-43e5-8a01-037e2c5bba4d
   WEBAPP-NAME: eShopOnWebleoss001
 
 
